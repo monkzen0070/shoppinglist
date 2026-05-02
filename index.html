@@ -35,6 +35,16 @@
       70% { opacity: 1; transform: translateX(-50%) translateY(0); }
       100% { opacity: 0; transform: translateX(-50%) translateY(-20px); visibility: hidden; }
     }
+    button {
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      transform: scale(1.02);
+      opacity: 0.9;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
   </style>
 </head>
 <body>
@@ -226,10 +236,14 @@
       };
 
       const copyShareLink = () => {
-        if (!shareLink) return;
+        if (!shareLink) {
+          showToast("⚠️ No list selected");
+          return;
+        }
         navigator.clipboard.writeText(shareLink).then(() => {
-          showToast("✓ Share link copied!");
-        }).catch(() => {
+          showToast("✓ Share link copied to clipboard!");
+        }).catch((err) => {
+          console.error("Clipboard error:", err);
           prompt("Copy this link to share:", shareLink);
         });
       };
@@ -314,29 +328,29 @@
 
       return React.createElement("div", { style: { minHeight: "100vh", background: "linear-gradient(135deg, #0e1117 0%, #141a24 50%, #0e1117 100%)", display: "flex", justifyContent: "center", padding: "24px 16px 80px" } },
         React.createElement("div", { style: { width: "100%", maxWidth: 420 } },
-          React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 } },
-            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+          React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 10 } },
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 } },
               user && !isReadOnly && React.createElement("select", {
-                value: currentListId,
+                value: currentListId || "",
                 onChange: e => { const list = lists.find(l => l.id === e.target.value); if (list) selectList(list); },
-                style: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", color: "#fff", fontFamily: "'DM Mono', monospace", fontSize: 12, maxWidth: 180 }
+                style: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 10px", color: "#fff", fontFamily: "'DM Mono', monospace", fontSize: 12, maxWidth: 160, cursor: "pointer" }
               }, lists.map(l => React.createElement("option", { key: l.id, value: l.id, style: { color: "#000" } }, l.name))),
-              (isReadOnly || (!user && currentListId)) && React.createElement("span", { style: { color: "rgba(255,255,255,0.6)", fontSize: 14 } }, 
+              (isReadOnly || (!user && currentListId)) && React.createElement("span", { style: { color: "rgba(255,255,255,0.6)", fontSize: 14, background: "rgba(0,0,0,0.3)", padding: "6px 12px", borderRadius: 8 } }, 
                 currentListName, 
                 React.createElement("span", { style: { marginLeft: 8, background: "rgba(74,222,128,0.15)", padding: "2px 8px", borderRadius: 12, fontSize: 10, color: "#4ade80" } }, "view only")
               )
             ),
-            React.createElement("div", { style: { display: "flex", gap: 8 } },
+            React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
               user && !isReadOnly && [
-                React.createElement("button", { key: "new", onClick: createNewList, style: { background: "none", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", padding: "6px 12px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "+ New"),
-                React.createElement("button", { key: "share", onClick: copyShareLink, style: { background: "none", border: "1px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)", padding: "6px 12px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "🔗 Share"),
-                React.createElement("button", { key: "logout", onClick: signOut, style: { background: "none", border: "1px solid rgba(251,113,133,0.3)", color: "rgba(251,113,133,0.8)", padding: "6px 12px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "Logout")
+                React.createElement("button", { key: "new", onClick: createNewList, style: { background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500 } }, "+ New"),
+                React.createElement("button", { key: "share", onClick: copyShareLink, style: { background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500 } }, "🔗 Share"),
+                React.createElement("button", { key: "logout", onClick: signOut, style: { background: "rgba(251,113,133,0.15)", border: "1px solid rgba(251,113,133,0.3)", color: "rgba(251,113,133,0.9)", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "Logout")
               ],
-              user && isReadOnly && React.createElement("button", { key: "signout", onClick: signOut, style: { background: "none", border: "1px solid rgba(251,113,133,0.3)", color: "rgba(251,113,133,0.8)", padding: "6px 12px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "Sign out"),
+              user && isReadOnly && React.createElement("button", { key: "signout", onClick: signOut, style: { background: "rgba(251,113,133,0.15)", border: "1px solid rgba(251,113,133,0.3)", color: "rgba(251,113,133,0.9)", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "Sign out"),
               !user && currentListId && !isReadOnly && React.createElement("button", {
                 onClick: () => { const provider = new firebase.auth.GoogleAuthProvider(); auth.signInWithPopup(provider); },
                 style: { background: "#fff", border: "none", color: "#0e1117", padding: "8px 18px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Mono', monospace" }
-              }, "Sign in to edit")
+              }, "Sign in")
             )
           ),
           React.createElement("div", { style: { marginBottom: 24 } },
@@ -355,7 +369,7 @@
               )
             )
           ),
-          React.createElement("div", { style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.18)", textAlign: "center", marginBottom: 16, letterSpacing: "0.05em", textTransform: "uppercase" } }, isReadOnly ? "view only — cannot edit" : "← swipe to toggle done →"),
+          React.createElement("div", { style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.18)", textAlign: "center", marginBottom: 16, letterSpacing: "0.05em", textTransform: "uppercase" } }, isReadOnly ? "📖 view only — cannot edit" : "← swipe to toggle done →"),
           pending.map(item => React.createElement(GroceryItem, { key: item.id, item: item, onToggle: toggle, onDelete: remove, readOnly: isReadOnly })),
           done.length > 0 && React.createElement("div", { style: { marginTop: 8 } },
             React.createElement("div", { style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.17)", textTransform: "uppercase", letterSpacing: "0.12em", margin: "16px 0 10px 4px" } }, "— Picked up"),
