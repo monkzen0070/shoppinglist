@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Grocery Planner – Cloud Save</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0e1117; font-family: 'Lora', Georgia, serif; -webkit-tap-highlight-color: transparent; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+    input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.22); }
+    input:focus, textarea:focus { outline: none; }
+    textarea { resize: none; }
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #4ade80;
+      color: #0e1117;
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-family: "'DM Mono', monospace";
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 1000;
+      animation: fadeOut 2s ease forwards;
+    }
+    @keyframes fadeOut {
+      0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+      70% { opacity: 1; transform: translateX(-50%) translateY(0); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-20px); visibility: hidden; }
+    }
+    button {
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      transform: scale(1.02);
+      opacity: 0.9;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+    /* Make dropdown clearly visible */
+    select {
+      cursor: pointer;
+      background: #1a202c !important;
+      border: 2px solid #4ade80 !important;
+      color: white !important;
+      padding: 8px 12px !important;
+      border-radius: 8px !important;
+      font-size: 13px !important;
+      font-family: "'DM Mono', monospace" !important;
+    }
+    select option {
+      background: #1a202c !important;
+      color: white !important;
+      padding: 8px !important;
+    }
+    select:hover {
+      background: #2d3748 !important;
+      border-color: #86efac !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Firebase v8 -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <!-- React -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+<script>
+// ─── helpers ─────────────────────────────────────────────────
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function encodeData(data) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+}
+
+function decodeData(str) {
+  try {
+    return JSON.parse(decodeURIComponent(escape(atob(str))));
+  } catch {
+    return null;
+  }
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2000);
+}
+
+// ─── DEMO BACKUP ─────────────────────────────────────────────
+const DEMO_LIST = {
+  id: uid(),
+  name: "🛒 Demo List",
+  items: [
+    { id: uid(), name: "Milk", done: false },
+    { id: uid(), name: "Eggs", done: false },
+    { id: uid(), name: "Bread", done: false }
+  ]
+};
+
+// ─── APP ─────────────────────────────────────────────────────
+function App() {
+  const [lists, setLists] = React.useState([]);
+  const [currentId, setCurrentId] = React.useState(null);
+  const [input, setInput] = React.useState('');
+
+  // ── load from URL or fallback ──────────────────────────────
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const data = params.get("data");
+
+    if (data) {
+      const decoded = decodeData(data);
+      if (decoded) {
+        setLists(decoded);
+        setCurrentId(decoded[0]?.id);
+        return;
+      }
+    }
+
+    // fallback demo
+    setLists([DEMO_LIST]);
+    setCurrentId(DEMO_LIST.id);
+  }, []);
+
+  const current = lists.find(l => l.id === currentId);
+
+  // ── actions ────────────────────────────────────────────────
+  const addItem = () => {
+    if (!input.trim()) return;
+
+    const updated = lists.map(l =>
+      l.id === currentId
+        ? {
+            ...l,
+            items: [...l.items, { id: uid(), name: input, done: false }]
+          }
+        : l
+    );
+
+    setLists(updated);
+    setInput('');
+  };
+
+  const toggle = (id) => {
+    setLists(lists.map(l =>
+      l.id === currentId
+        ? {
+            ...l,
+            items: l.items.map(i =>
+              i.id === id ? { ...i, done: !i.done } : i
+            )
+          }
+        : l
+    ));
+  };
+
+  const createList = () => {
+    const newList = {
+      id: uid(),
+      name: "📝 New List",
+      items: []
+    };
+    setLists([newList, ...lists]);
+    setCurrentId(newList.id);
+  };
+
+  // ── SHARE ─────────────────────────────────────────────────
+  const share = () => {
+    const encoded = encodeData(lists);
+    const url = window.location.origin + window.location.pathname + "?data=" + encoded;
+
+    navigator.clipboard.writeText(url);
+    showToast("🔗 Link copied!");
+  };
+
+  if (!current) return null;
+
+  // ── UI ────────────────────────────────────────────────────
+  return React.createElement("div", { style: { padding: 20, color: "white" } },
+
+    React.createElement("h2", null, current.name),
+
+    React.createElement("div", { style: { marginBottom: 10 } },
+      React.createElement("button", { onClick: createList }, "➕ New List "),
+      React.createElement("button", { onClick: share }, "🔗 Share")
+    ),
+
+    current.items.map(item =>
+      React.createElement("div", {
+        key: item.id,
+        onClick: () => toggle(item.id),
+        style: {
+          textDecoration: item.done ? "line-through" : "none",
+          cursor: "pointer",
+          marginBottom: 6
+        }
+      }, item.name)
+    ),
+
+    React.createElement("div", { style: { marginTop: 10 } },
+      React.createElement("input", {
+        value: input,
+        onChange: e => setInput(e.target.value),
+        placeholder: "Add item..."
+      }),
+      React.createElement("button", { onClick: addItem }, "Add")
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root"))
+  .render(React.createElement(App));
+</script>
+</body>
+</html>
