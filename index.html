@@ -339,7 +339,7 @@
           showToast("✓ New list created!");
         } catch (error) {
           console.error("Create list error:", error);
-          alert("Failed to create new list");
+          alert("Failed to create new list.\n\nError: " + error.message + "\n\nThis is usually a Firestore security rules issue. Make sure your rules allow authenticated users to write their own documents.");
         }
       };
 
@@ -409,8 +409,17 @@
 
       const loadUserLists = async (uid) => {
         try {
-          const snap = await db.collection("lists").where("ownerId", "==", uid).orderBy("createdAt", "desc").get();
-          const userLists = snap.docs.map(d => ({ id: d.id, name: d.data().name, items: d.data().items || [], ownerId: d.data().ownerId }));
+          // Use simple where-only query (no orderBy) to avoid requiring a composite index.
+          // Sort client-side instead so the app works without any index configuration.
+          const snap = await db.collection("lists").where("ownerId", "==", uid).get();
+          const userLists = snap.docs
+            .map(d => ({ id: d.id, name: d.data().name, items: d.data().items || [], ownerId: d.data().ownerId, createdAt: d.data().createdAt }))
+            .sort((a, b) => {
+              // Firestore Timestamps have .toMillis(); fall back to 0 if missing
+              const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+              const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+              return tb - ta; // newest first
+            });
           setLists(userLists);
           if (userLists.length > 0) {
             selectList(userLists[0]);
@@ -419,6 +428,7 @@
           }
         } catch (error) {
           console.error("Load lists error:", error);
+          alert("Could not load your lists.\n\nError: " + error.message + "\n\nCheck your Firestore security rules — they may be blocking reads.");
         }
       };
 
