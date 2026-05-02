@@ -39,10 +39,6 @@
       transition: all 0.2s ease;
       cursor: pointer;
     }
-    button:hover {
-      transform: scale(1.02);
-      opacity: 0.9;
-    }
     button:active {
       transform: scale(0.98);
     }
@@ -64,6 +60,25 @@
     select:hover {
       background: #2d3748 !important;
       border-color: #86efac !important;
+    }
+    /* Mobile responsive button grid */
+    .button-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .button-group button {
+      flex: 1;
+      min-width: 70px;
+      white-space: nowrap;
+    }
+    @media (max-width: 480px) {
+      .button-group button {
+        font-size: 10px !important;
+        padding: 6px 10px !important;
+        white-space: normal;
+        word-break: keep-all;
+      }
     }
   </style>
 </head>
@@ -89,124 +104,18 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // 10 Pre-made shopping lists
+    // 10 Pre-made shopping lists (fixed IDs to avoid conflicts)
     const PREMADE_LISTS = [
-      {
-        name: "🛒 Weekly Groceries",
-        items: [
-          { id: 1, name: "Milk (2L)", done: false },
-          { id: 2, name: "Brown Bread", done: false },
-          { id: 3, name: "Eggs (12 pcs)", done: false },
-          { id: 4, name: "Butter", done: false },
-          { id: 5, name: "Fresh Vegetables", done: false },
-          { id: 6, name: "Chicken Breast", done: false },
-          { id: 7, name: "Rice (2kg)", done: false }
-        ]
-      },
-      {
-        name: "🥗 Healthy Eating",
-        items: [
-          { id: 1, name: "Kale / Spinach", done: false },
-          { id: 2, name: "Avocados (3 pcs)", done: false },
-          { id: 3, name: "Quinoa", done: false },
-          { id: 4, name: "Almond Milk", done: false },
-          { id: 5, name: "Chia Seeds", done: false },
-          { id: 6, name: "Salmon Fillet", done: false },
-          { id: 7, name: "Sweet Potatoes", done: false }
-        ]
-      },
-      {
-        name: "🎂 Baking Supplies",
-        items: [
-          { id: 1, name: "All-purpose Flour", done: false },
-          { id: 2, name: "Granulated Sugar", done: false },
-          { id: 3, name: "Baking Powder", done: false },
-          { id: 4, name: "Vanilla Extract", done: false },
-          { id: 5, name: "Dark Chocolate Chips", done: false },
-          { id: 6, name: "Unsalted Butter", done: false }
-        ]
-      },
-      {
-        name: "🍕 Party Food",
-        items: [
-          { id: 1, name: "Pizza Base", done: false },
-          { id: 2, name: "Pizza Sauce", done: false },
-          { id: 3, name: "Mozzarella Cheese", done: false },
-          { id: 4, name: "Pepperoni", done: false },
-          { id: 5, name: "Soft Drinks (6-pack)", done: false },
-          { id: 6, name: "Chips & Dip", done: false },
-          { id: 7, name: "Nachos", done: false }
-        ]
-      },
-      {
-        name: "🇮🇳 Indian Kitchen",
-        items: [
-          { id: 1, name: "Basmati Rice", done: false },
-          { id: 2, name: "Turmeric Powder", done: false },
-          { id: 3, name: "Red Chili Powder", done: false },
-          { id: 4, name: "Cumin Seeds", done: false },
-          { id: 5, name: "Coriander Powder", done: false },
-          { id: 6, name: "Lentils (Toor Dal)", done: false },
-          { id: 7, name: "Garam Masala", done: false }
-        ]
-      },
-      {
-        name: "🥩 BBQ Essentials",
-        items: [
-          { id: 1, name: "Burger Buns", done: false },
-          { id: 2, name: "Ground Beef", done: false },
-          { id: 3, name: "Sausages", done: false },
-          { id: 4, name: "BBQ Sauce", done: false },
-          { id: 5, name: "Corn on the Cob", done: false },
-          { id: 6, name: "Onions", done: false },
-          { id: 7, name: "Ketchup & Mustard", done: false }
-        ]
-      },
-      {
-        name: "☕ Morning Coffee",
-        items: [
-          { id: 1, name: "Coffee Beans", done: false },
-          { id: 2, name: "Oat Milk", done: false },
-          { id: 3, name: "Croissants", done: false },
-          { id: 4, name: "Honey", done: false },
-          { id: 5, name: "Bananas (6 pcs)", done: false },
-          { id: 6, name: "Greek Yogurt", done: false }
-        ]
-      },
-      {
-        name: "🧼 Household Items",
-        items: [
-          { id: 1, name: "Laundry Detergent", done: false },
-          { id: 2, name: "Dish Soap", done: false },
-          { id: 3, name: "Trash Bags", done: false },
-          { id: 4, name: "Paper Towels", done: false },
-          { id: 5, name: "Toilet Paper (12 pack)", done: false },
-          { id: 6, name: "All-purpose Cleaner", done: false }
-        ]
-      },
-      {
-        name: "🍰 Dessert Night",
-        items: [
-          { id: 1, name: "Ice Cream", done: false },
-          { id: 2, name: "Brownie Mix", done: false },
-          { id: 3, name: "Whipped Cream", done: false },
-          { id: 4, name: "Strawberries", done: false },
-          { id: 5, name: "Chocolate Syrup", done: false },
-          { id: 6, name: "Sprinkles", done: false }
-        ]
-      },
-      {
-        name: "🥑 Vegan Shopping",
-        items: [
-          { id: 1, name: "Tofu", done: false },
-          { id: 2, name: "Tempeh", done: false },
-          { id: 3, name: "Nutritional Yeast", done: false },
-          { id: 4, name: "Coconut Yogurt", done: false },
-          { id: 5, name: "Plant-based Cheese", done: false },
-          { id: 6, name: "Lentils", done: false },
-          { id: 7, name: "Fresh Herbs", done: false }
-        ]
-      }
+      { name: "🛒 Weekly Groceries", items: ["Milk (2L)", "Brown Bread", "Eggs (12 pcs)", "Butter", "Fresh Vegetables", "Chicken Breast", "Rice (2kg)"] },
+      { name: "🥗 Healthy Eating", items: ["Kale / Spinach", "Avocados (3 pcs)", "Quinoa", "Almond Milk", "Chia Seeds", "Salmon Fillet", "Sweet Potatoes"] },
+      { name: "🎂 Baking Supplies", items: ["All-purpose Flour", "Granulated Sugar", "Baking Powder", "Vanilla Extract", "Dark Chocolate Chips", "Unsalted Butter"] },
+      { name: "🍕 Party Food", items: ["Pizza Base", "Pizza Sauce", "Mozzarella Cheese", "Pepperoni", "Soft Drinks (6-pack)", "Chips & Dip", "Nachos"] },
+      { name: "🇮🇳 Indian Kitchen", items: ["Basmati Rice", "Turmeric Powder", "Red Chili Powder", "Cumin Seeds", "Coriander Powder", "Lentils (Toor Dal)", "Garam Masala"] },
+      { name: "🥩 BBQ Essentials", items: ["Burger Buns", "Ground Beef", "Sausages", "BBQ Sauce", "Corn on the Cob", "Onions", "Ketchup & Mustard"] },
+      { name: "☕ Morning Coffee", items: ["Coffee Beans", "Oat Milk", "Croissants", "Honey", "Bananas (6 pcs)", "Greek Yogurt"] },
+      { name: "🧼 Household Items", items: ["Laundry Detergent", "Dish Soap", "Trash Bags", "Paper Towels", "Toilet Paper (12 pack)", "All-purpose Cleaner"] },
+      { name: "🍰 Dessert Night", items: ["Ice Cream", "Brownie Mix", "Whipped Cream", "Strawberries", "Chocolate Syrup", "Sprinkles"] },
+      { name: "🥑 Vegan Shopping", items: ["Tofu", "Tempeh", "Nutritional Yeast", "Coconut Yogurt", "Plant-based Cheese", "Lentils", "Fresh Herbs"] }
     ];
 
     function showToast(message) {
@@ -354,13 +263,15 @@
         const name = newName.trim(); if (!name) return;
         updateItems([...items, { id: Date.now(), name, done: false }]);
         setNewName("");
+        showToast(`✓ Added "${name}"`);
       };
 
       const handlePasteChange = (text) => { setPasteText(text); setPastePreview(parseListText(text)); };
       const importPasted = () => {
         if (isReadOnly) return;
         if (!pastePreview.length) return;
-        updateItems([...items, ...pastePreview.map(name => ({ id: Date.now() + Math.random(), name, done: false }))]);
+        const newItems = [...items, ...pastePreview.map(name => ({ id: Date.now() + Math.random(), name, done: false }))];
+        updateItems(newItems);
         setPasteText(""); setPastePreview([]); setPasteMode(false);
         showToast(`✓ Imported ${pastePreview.length} items`);
       };
@@ -383,7 +294,7 @@
       const createNewList = async () => {
         if (!user) return;
         const today = new Date().toISOString().split("T")[0];
-        const defaultName = `Grocery List - ${today}`;
+        const defaultName = `📝 List - ${today}`;
         const newList = { 
           name: defaultName, 
           items: [], 
@@ -395,42 +306,44 @@
           const list = { id: docRef.id, name: defaultName, items: [], ownerId: user.uid };
           setLists(prev => [list, ...prev]);
           selectList(list);
-          showToast("✓ New grocery list created!");
+          showToast("✓ New list created!");
         } catch (error) {
           console.error("Create list error:", error);
           alert("Failed to create new list");
         }
       };
 
-      const loadPremadeList = (premade) => {
+      const loadPremadeList = async (premade) => {
         if (!user) {
-          showToast("⚠️ Please sign in first to save lists");
+          showToast("⚠️ Please sign in first");
           return;
         }
-        // Generate unique IDs for items
-        const itemsWithIds = premade.items.map((item, idx) => ({
-          id: Date.now() + idx,
-          name: item.name,
-          done: false
-        }));
         
-        const newList = {
-          name: premade.name,
-          items: itemsWithIds,
-          ownerId: user.uid,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        
-        db.collection("lists").add(newList).then(docRef => {
+        try {
+          // Create items with unique IDs
+          const itemsWithIds = premade.items.map((itemName, idx) => ({
+            id: Date.now() + idx + Math.random(),
+            name: itemName,
+            done: false
+          }));
+          
+          const newList = {
+            name: premade.name,
+            items: itemsWithIds,
+            ownerId: user.uid,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          
+          const docRef = await db.collection("lists").add(newList);
           const list = { id: docRef.id, name: premade.name, items: itemsWithIds, ownerId: user.uid };
           setLists(prev => [list, ...prev]);
           selectList(list);
           setShowPremade(false);
-          showToast(`✓ "${premade.name}" loaded!`);
-        }).catch(error => {
+          showToast(`✓ "${premade.name}" loaded with ${premade.items.length} items!`);
+        } catch (error) {
           console.error("Error loading premade list:", error);
-          alert("Failed to load premade list");
-        });
+          alert("Failed to load premade list. Please try again.");
+        }
       };
 
       const copyShareLink = () => {
@@ -439,9 +352,9 @@
           return;
         }
         navigator.clipboard.writeText(shareLink).then(() => {
-          showToast("✓ Share link copied to clipboard!");
+          showToast("✓ Share link copied!");
         }).catch(() => {
-          prompt("Copy this link to share:", shareLink);
+          prompt("Copy this link:", shareLink);
         });
       };
 
@@ -472,7 +385,7 @@
       const createDefaultList = async (uid) => {
         const today = new Date().toISOString().split("T")[0];
         const newList = { 
-          name: `Grocery List - ${today}`, 
+          name: `📝 List - ${today}`, 
           items: [], 
           ownerId: uid, 
           createdAt: firebase.firestore.FieldValue.serverTimestamp() 
@@ -564,67 +477,75 @@
 
       return React.createElement("div", { style: { minHeight: "100vh", background: "linear-gradient(135deg, #0e1117 0%, #141a24 50%, #0e1117 100%)", display: "flex", justifyContent: "center", padding: "24px 16px 80px" } },
         React.createElement("div", { style: { width: "100%", maxWidth: 420 } },
-          React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 10 } },
-            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 } },
-              user && !isReadOnly && React.createElement("select", {
+          // Top bar with dropdown and buttons
+          React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 } },
+            // Dropdown row
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
+              user && !isReadOnly && lists.length > 0 && React.createElement("select", {
                 value: currentListId || "",
                 onChange: handleListChange,
-                style: { background: "#1a202c", border: "2px solid #4ade80", borderRadius: 8, padding: "8px 12px", color: "white", fontFamily: "'DM Mono', monospace", fontSize: 13, cursor: "pointer", maxWidth: 220 }
+                style: { flex: 1, minWidth: 150, background: "#1a202c", border: "2px solid #4ade80", borderRadius: 8, padding: "10px 12px", color: "white", fontFamily: "'DM Mono', monospace", fontSize: 13, cursor: "pointer" }
               }, [
-                React.createElement("option", { key: "placeholder", value: "", disabled: true }, "Select a list..."),
-                ...lists.map(l => React.createElement("option", { key: l.id, value: l.id, style: { background: "#1a202c", color: "white" } }, l.name)),
-                React.createElement("option", { key: "premade", value: "__PREmade__", style: { background: "#4ade80", color: "#0e1117", fontWeight: "bold" } }, "🎯 LOAD PREMADE LIST →")
+                React.createElement("option", { key: "placeholder", value: "", disabled: true }, "📋 Select a list..."),
+                ...lists.map(l => React.createElement("option", { key: l.id, value: l.id, style: { background: "#1a202c", color: "white" } }, l.name.length > 25 ? l.name.substring(0, 22) + "..." : l.name)),
+                React.createElement("option", { key: "premade", value: "__PREmade__", style: { background: "#4ade80", color: "#0e1117", fontWeight: "bold" } }, "🎯 + Load Premade List")
               ]),
-              (isReadOnly || (!user && currentListId)) && React.createElement("span", { style: { color: "rgba(255,255,255,0.6)", fontSize: 14, background: "#1a202c", padding: "8px 12px", borderRadius: 8, border: "1px solid #4ade80" } }, 
-                currentListName, 
+              (isReadOnly || (!user && currentListId)) && React.createElement("span", { style: { flex: 1, color: "rgba(255,255,255,0.6)", fontSize: 14, background: "#1a202c", padding: "10px 12px", borderRadius: 8, border: "1px solid #4ade80", textAlign: "center" } }, 
+                currentListName.length > 20 ? currentListName.substring(0, 17) + "..." : currentListName,
                 React.createElement("span", { style: { marginLeft: 8, background: "rgba(74,222,128,0.15)", padding: "2px 8px", borderRadius: 12, fontSize: 10, color: "#4ade80" } }, "view only")
               )
             ),
-            React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
-              user && !isReadOnly && [
-                React.createElement("button", { key: "new", onClick: createNewList, style: { background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500 } }, "+ New List"),
-                React.createElement("button", { key: "share", onClick: copyShareLink, style: { background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500 } }, "🔗 Share"),
-                React.createElement("button", { key: "clearall", onClick: clearAllItems, style: { background: "rgba(251,113,133,0.15)", border: "1px solid rgba(251,113,133,0.4)", color: "#fb7185", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500 } }, "🗑️ Clear All"),
-                React.createElement("button", { key: "logout", onClick: signOut, style: { background: "rgba(156,163,175,0.15)", border: "1px solid rgba(156,163,175,0.3)", color: "#9ca3af", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "Logout")
-              ],
-              user && isReadOnly && React.createElement("button", { key: "signout", onClick: signOut, style: { background: "rgba(251,113,133,0.15)", border: "1px solid rgba(251,113,133,0.3)", color: "rgba(251,113,133,0.9)", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "Sign out"),
-              !user && currentListId && !isReadOnly && React.createElement("button", {
+            // Buttons row - mobile friendly
+            user && !isReadOnly && React.createElement("div", { className: "button-group", style: { display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" } },
+              React.createElement("button", { onClick: createNewList, style: { background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", padding: "8px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500, flex: 1, minWidth: "70px" } }, "+ New"),
+              React.createElement("button", { onClick: copyShareLink, style: { background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "8px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500, flex: 1, minWidth: "70px" } }, "🔗 Share"),
+              React.createElement("button", { onClick: clearAllItems, style: { background: "rgba(251,113,133,0.15)", border: "1px solid rgba(251,113,133,0.4)", color: "#fb7185", padding: "8px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500, flex: 1, minWidth: "70px" } }, "🗑️ Clear"),
+              React.createElement("button", { onClick: signOut, style: { background: "rgba(156,163,175,0.15)", border: "1px solid rgba(156,163,175,0.3)", color: "#9ca3af", padding: "8px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", flex: 1, minWidth: "70px" } }, "Logout")
+            ),
+            user && isReadOnly && React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center" } },
+              React.createElement("button", { onClick: signOut, style: { background: "rgba(251,113,133,0.15)", border: "1px solid rgba(251,113,133,0.3)", color: "rgba(251,113,133,0.9)", padding: "8px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "Sign out")
+            ),
+            !user && currentListId && !isReadOnly && React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center" } },
+              React.createElement("button", {
                 onClick: () => { const provider = new firebase.auth.GoogleAuthProvider(); auth.signInWithPopup(provider); },
                 style: { background: "#fff", border: "none", color: "#0e1117", padding: "8px 18px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Mono', monospace" }
-              }, "Sign in")
+              }, "Sign in to edit")
             )
           ),
           
-          // Premade Lists Modal
-          showPremade && React.createElement("div", { style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 } },
-            React.createElement("div", { style: { background: "#1a202c", borderRadius: 20, maxWidth: 500, width: "100%", maxHeight: "80vh", overflow: "auto", padding: 24 } },
-              React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 } },
-                React.createElement("h2", { style: { color: "#4ade80", fontFamily: "'DM Mono', monospace", fontSize: 18 } }, "🎯 Choose a Premade List"),
-                React.createElement("button", { onClick: () => setShowPremade(false), style: { background: "none", border: "none", color: "#fff", fontSize: 24, cursor: "pointer" } }, "×")
+          // Premade Lists Modal - Fixed
+          showPremade && React.createElement("div", { style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.95)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } },
+            React.createElement("div", { style: { background: "#1a202c", borderRadius: 20, maxWidth: 500, width: "100%", maxHeight: "85vh", overflow: "auto", padding: 20 } },
+              React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, borderBottom: "1px solid rgba(74,222,128,0.3)", paddingBottom: 12 } },
+                React.createElement("h2", { style: { color: "#4ade80", fontFamily: "'DM Mono', monospace", fontSize: 18 } }, "🎯 Choose a Template"),
+                React.createElement("button", { onClick: () => setShowPremade(false), style: { background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", fontSize: 24, cursor: "pointer", width: 36, height: 36, borderRadius: 18 } }, "×")
               ),
               React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
                 PREMADE_LISTS.map((list, idx) => 
-                  React.createElement("button", { key: idx, onClick: () => loadPremadeList(list), style: { background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: 12, padding: "14px", textAlign: "left", cursor: "pointer", transition: "all 0.2s" } },
-                    React.createElement("div", { style: { fontWeight: "bold", color: "#4ade80", marginBottom: 8, fontFamily: "'DM Mono', monospace" } }, list.name),
-                    React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", fontFamily: "'DM Mono', monospace" } }, list.items.length, " items • Click to load")
+                  React.createElement("button", { key: idx, onClick: () => loadPremadeList(list), style: { background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 12, padding: "12px 16px", textAlign: "left", cursor: "pointer", transition: "all 0.2s" } },
+                    React.createElement("div", { style: { fontWeight: "bold", color: "#4ade80", marginBottom: 6, fontFamily: "'DM Mono', monospace", fontSize: 14 } }, list.name),
+                    React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", fontFamily: "'DM Mono', monospace" } }, list.items.length, " items ready to add")
                   )
                 )
               )
             )
           ),
           
+          // List name input
           React.createElement("div", { style: { marginBottom: 24 } },
             !isReadOnly && user ? React.createElement("input", {
               value: currentListName,
               onChange: handleNameChange,
-              style: { background: "transparent", border: "none", borderBottom: "2px solid #4ade80", padding: "6px 0", color: "#fff", fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 800, width: "100%", outline: "none" }
-            }) : React.createElement("h1", { style: { fontFamily: "'Playfair Display', Georgia, serif", fontSize: 28, fontWeight: 800, color: "#fff" } }, currentListName),
+              style: { background: "transparent", border: "none", borderBottom: "2px solid #4ade80", padding: "6px 0", color: "#fff", fontFamily: "'Playfair Display', serif", fontSize: "clamp(24px, 6vw, 32px)", fontWeight: 800, width: "100%", outline: "none", textAlign: "center" }
+            }) : React.createElement("h1", { style: { fontFamily: "'Playfair Display', Georgia, serif", fontSize: "clamp(24px, 6vw, 32px)", fontWeight: 800, color: "#fff", textAlign: "center" } }, currentListName),
+            
+            // Progress bar
             React.createElement("div", { style: { marginTop: 16 } },
-              React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } },
+              React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 8 } },
                 React.createElement("span", { style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.32)", letterSpacing: "0.06em", textTransform: "uppercase" } }, done.length, " / ", items.length, " picked · ", pct, "%"),
                 React.createElement("div", { style: { display: "flex", gap: 8 } },
-                  items.length > 0 && user && !isReadOnly && React.createElement("button", { onClick: clearAllItems, style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#fb7185", background: "none", border: "none", cursor: "pointer", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Clear all"),
-                  done.length > 0 && user && !isReadOnly && React.createElement("button", { onClick: clearDone, style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(251,113,133,0.65)", background: "none", border: "none", cursor: "pointer", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Clear done")
+                  items.length > 0 && user && !isReadOnly && React.createElement("button", { onClick: clearAllItems, style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#fb7185", background: "none", border: "none", cursor: "pointer" } }, "Clear all"),
+                  done.length > 0 && user && !isReadOnly && React.createElement("button", { onClick: clearDone, style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(251,113,133,0.65)", background: "none", border: "none", cursor: "pointer" } }, "Clear done")
                 )
               ),
               React.createElement("div", { style: { height: 3, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden" } },
@@ -632,13 +553,19 @@
               )
             )
           ),
+          
           React.createElement("div", { style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.18)", textAlign: "center", marginBottom: 16, letterSpacing: "0.05em", textTransform: "uppercase" } }, isReadOnly ? "📖 view only — cannot edit" : "← swipe to toggle done →"),
+          
+          // Items list
           pending.map(item => React.createElement(GroceryItem, { key: item.id, item: item, onToggle: toggle, onDelete: remove, readOnly: isReadOnly })),
           done.length > 0 && React.createElement("div", { style: { marginTop: 8 } },
-            React.createElement("div", { style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.17)", textTransform: "uppercase", letterSpacing: "0.12em", margin: "16px 0 10px 4px" } }, "— Picked up"),
+            React.createElement("div", { style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.17)", textTransform: "uppercase", letterSpacing: "0.12em", margin: "16px 0 10px 4px" } }, "— Picked up —"),
             done.map(item => React.createElement(GroceryItem, { key: item.id, item: item, onToggle: toggle, onDelete: remove, readOnly: isReadOnly }))
           ),
-          items.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: "48px 0", fontFamily: "'Lora', serif", color: "rgba(255,255,255,0.2)", fontSize: 15 } }, "✨ Your list is empty — add some items or load a premade list! ✨"),
+          
+          items.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: "48px 0", fontFamily: "'Lora', serif", color: "rgba(255,255,255,0.2)", fontSize: 15 } }, "✨ Empty list — add items or load a template! ✨"),
+          
+          // Add items section
           user && !isReadOnly && React.createElement("div", { style: { marginTop: 28, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 16, padding: "14px 16px" } },
             React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14, background: "rgba(0,0,0,0.3)", borderRadius: 10, padding: 4 } },
               ["Single item", "Paste list"].map((label, i) => {
@@ -663,8 +590,9 @@
               )
             )
           ),
+          
           isReadOnly && React.createElement("div", { style: { marginTop: 28, textAlign: "center", padding: "16px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.1)" } },
-            React.createElement("span", { style: { fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)" } }, "📋 This is a shared list — view only"),
+            React.createElement("span", { style: { fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)" } }, "📋 Shared list — view only"),
             React.createElement("br"),
             !user && React.createElement("button", { 
               onClick: () => { const provider = new firebase.auth.GoogleAuthProvider(); auth.signInWithPopup(provider); },
