@@ -24,7 +24,8 @@
       color: #0e1117;
       padding: 10px 20px;
       border-radius: 30px;
-      font-family: "'DM Mono', monospace";
+      /* FIX 1: Removed extra nested quotes around font name */
+      font-family: 'DM Mono', monospace;
       font-size: 13px;
       font-weight: 500;
       z-index: 1000;
@@ -50,7 +51,8 @@
       padding: 8px 12px !important;
       border-radius: 8px !important;
       font-size: 13px !important;
-      font-family: "'DM Mono', monospace" !important;
+      /* FIX 1 (cont): Removed extra nested quotes around font name */
+      font-family: 'DM Mono', monospace !important;
     }
     select option {
       background: #1a202c !important;
@@ -61,7 +63,6 @@
       background: #2d3748 !important;
       border-color: #86efac !important;
     }
-    /* Mobile responsive button grid */
     .button-group {
       display: flex;
       gap: 8px;
@@ -104,7 +105,6 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // 10 Pre-made shopping lists (fixed IDs to avoid conflicts)
     const PREMADE_LISTS = [
       { name: "🛒 Weekly Groceries", items: ["Milk (2L)", "Brown Bread", "Eggs (12 pcs)", "Butter", "Fresh Vegetables", "Chicken Breast", "Rice (2kg)"] },
       { name: "🥗 Healthy Eating", items: ["Kale / Spinach", "Avocados (3 pcs)", "Quinoa", "Almond Milk", "Chia Seeds", "Salmon Fillet", "Sweet Potatoes"] },
@@ -229,13 +229,23 @@
       const [currentListId, setCurrentListId] = React.useState(null);
       const [currentListName, setCurrentListName] = React.useState("");
       const [items, setItems] = React.useState([]);
-      const [newName, setNewName] = React.useState("");
+      const [newItemName, setNewItemName] = React.useState("");  // FIX 2: Renamed from newName to newItemName
       const [pasteMode, setPasteMode] = React.useState(false);
       const [pasteText, setPasteText] = React.useState("");
       const [pastePreview, setPastePreview] = React.useState([]);
       const [shareLink, setShareLink] = React.useState("");
       const [isReadOnly, setIsReadOnly] = React.useState(false);
       const [showPremade, setShowPremade] = React.useState(false);
+
+      // FIX 3: selectList moved up before all callers so dependency order is clear
+      const selectList = (list) => {
+        if (!list) return;
+        setCurrentListId(list.id);
+        setCurrentListName(list.name);
+        setItems(list.items || []);
+        setShareLink(generateShareLink(list.id));
+        setIsReadOnly(false);
+      };
 
       const saveCurrentList = React.useCallback(async (newItems) => {
         if (!currentListId || !user || isReadOnly) return;
@@ -260,9 +270,9 @@
 
       const addSingle = () => {
         if (isReadOnly) return;
-        const name = newName.trim(); if (!name) return;
+        const name = newItemName.trim(); if (!name) return;  // FIX 2: uses newItemName
         updateItems([...items, { id: Date.now(), name, done: false }]);
-        setNewName("");
+        setNewItemName("");  // FIX 2: uses setNewItemName
         showToast(`✓ Added "${name}"`);
       };
 
@@ -291,69 +301,79 @@
         }
       };
 
-	const createNewList = async () => {
-	  if (!user) return;
+      // FIX 4: Added deleteList function
+      const deleteList = async () => {
+        if (!user || isReadOnly || !currentListId) return;
+        if (!confirm("Delete this list permanently? This cannot be undone.")) return;
+        try {
+          await db.collection("lists").doc(currentListId).delete();
+          const remaining = lists.filter(l => l.id !== currentListId);
+          setLists(remaining);
+          if (remaining.length > 0) {
+            selectList(remaining[0]);
+          } else {
+            await createDefaultList(user.uid);
+          }
+          showToast("🗑️ List deleted");
+        } catch (error) {
+          console.error("Delete list error:", error);
+          alert("Failed to delete list");
+        }
+      };
 
-	  const today = new Date().toISOString().split("T")[0];
-	  const defaultName = `📝 List - ${today}`;
+      const createNewList = async () => {
+        if (!user) return;
+        const today = new Date().toISOString().split("T")[0];
+        const defaultName = `📝 List - ${today}`;
+        const newList = { 
+          name: defaultName, 
+          items: [], 
+          ownerId: user.uid, 
+          createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+        };
+        try {
+          const docRef = await db.collection("lists").add(newList);
+          const list = { id: docRef.id, name: defaultName, items: [], ownerId: user.uid };
+          setLists(prev => [list, ...prev]);
+          selectList(list);
+          showToast("✓ New list created!");
+        } catch (error) {
+          console.error("Create list error:", error);
+          alert("Failed to create new list");
+        }
+      };
 
-	  const newList = { 
-		name: defaultName, 
-		items: [], 
-		ownerId: user.uid, 
-		createdAt: firebase.firestore.FieldValue.serverTimestamp() 
-	  };
-
-	  try {
-		const docRef = await db.collection("lists").add(newList);
-
-		const list = { 
-		  id: docRef.id, 
-		  name: defaultName, 
-		  items: [], 
-		  ownerId: user.uid 
-		};
-
-		// ✅ update lists FIRST
-		setLists(prev => [list, ...prev]);
-
-		// ✅ DO NOT call selectList(list) here (this was the bug)
-
-		// ✅ manually set active list
-		setCurrentListId(list.id);
-		setCurrentListName(list.name);
-		setItems([]);
-		setShareLink(generateShareLink(list.id));
-		setIsReadOnly(false);
-
-		showToast("✓ New list created!");
-	  } catch (error) {
-		console.error("Create list error:", error);
-		alert("Failed to create new list");
-	  }
-	};
+      const createDefaultList = async (uid) => {
+        const today = new Date().toISOString().split("T")[0];
+        const newList = { 
+          name: `📝 List - ${today}`, 
+          items: [], 
+          ownerId: uid, 
+          createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+        };
+        const docRef = await db.collection("lists").add(newList);
+        const list = { id: docRef.id, name: newList.name, items: [], ownerId: uid };
+        setLists([list]);
+        selectList(list);
+      };
 
       const loadPremadeList = async (premade) => {
         if (!user) {
           showToast("⚠️ Please sign in first");
           return;
         }
-        
         try {
-          // Create items with unique IDs
           const itemsWithIds = premade.items.map((itemName, idx) => ({
             id: Date.now() + idx + Math.random(),
             name: itemName,
             done: false
           }));
-          
           const newList = {
             name: premade.name,
             items: itemsWithIds,
             ownerId: user.uid,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           };
-          
           const docRef = await db.collection("lists").add(newList);
           const list = { id: docRef.id, name: premade.name, items: itemsWithIds, ownerId: user.uid };
           setLists(prev => [list, ...prev]);
@@ -402,50 +422,33 @@
         }
       };
 
-      const createDefaultList = async (uid) => {
-        const today = new Date().toISOString().split("T")[0];
-        const newList = { 
-          name: `📝 List - ${today}`, 
-          items: [], 
-          ownerId: uid, 
-          createdAt: firebase.firestore.FieldValue.serverTimestamp() 
-        };
-        const docRef = await db.collection("lists").add(newList);
-        const list = { id: docRef.id, name: newList.name, items: [], ownerId: uid };
-        setLists([list]);
-        selectList(list);
+      // FIX 2 (cont): Renamed parameter from newName -> val to avoid shadowing newItemName state
+      const handleNameChange = async (e) => {
+        const val = e.target.value;
+        setCurrentListName(val);
+        if (currentListId && user && !isReadOnly) {
+          try {
+            await db.collection("lists").doc(currentListId).update({ name: val });
+            // Keep local lists in sync
+            setLists(prev => prev.map(l => l.id === currentListId ? { ...l, name: val } : l));
+          } catch (error) {
+            console.error("Update name error:", error);
+          }
+        }
       };
 
-      const selectList = (list) => {
-        if (!list) return;
-        setCurrentListId(list.id);
-        setCurrentListName(list.name);
-        setItems(list.items || []);
-        setShareLink(generateShareLink(list.id));
-        setIsReadOnly(false);
-      };
-
+      // FIX 5: Reset select to currentListId when user cancels the premade modal
       const handleListChange = (e) => {
         const selectedId = e.target.value;
         if (selectedId === "__PREmade__") {
           setShowPremade(true);
+          // Reset select value back to current list immediately so it doesn't stay stuck
+          e.target.value = currentListId || "";
           return;
         }
         const selected = lists.find(l => l.id === selectedId);
         if (selected) {
           selectList(selected);
-        }
-      };
-
-      const handleNameChange = async (e) => {
-        const newName = e.target.value;
-        setCurrentListName(newName);
-        if (currentListId && user && !isReadOnly) {
-          try {
-            await db.collection("lists").doc(currentListId).update({ name: newName });
-          } catch (error) {
-            console.error("Update name error:", error);
-          }
         }
       };
 
@@ -497,7 +500,8 @@
 
       return React.createElement("div", { style: { minHeight: "100vh", background: "linear-gradient(135deg, #0e1117 0%, #141a24 50%, #0e1117 100%)", display: "flex", justifyContent: "center", padding: "24px 16px 80px" } },
         React.createElement("div", { style: { width: "100%", maxWidth: 420 } },
-          // Top bar with dropdown and buttons
+
+          // Top bar
           React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 } },
             // Dropdown row
             React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
@@ -515,11 +519,12 @@
                 React.createElement("span", { style: { marginLeft: 8, background: "rgba(74,222,128,0.15)", padding: "2px 8px", borderRadius: 12, fontSize: 10, color: "#4ade80" } }, "view only")
               )
             ),
-            // Buttons row - mobile friendly
+            // Buttons row — FIX 4: Added 🗑️ Delete List button
             user && !isReadOnly && React.createElement("div", { className: "button-group", style: { display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" } },
               React.createElement("button", { onClick: createNewList, style: { background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", padding: "8px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500, flex: 1, minWidth: "70px" } }, "+ New"),
               React.createElement("button", { onClick: copyShareLink, style: { background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "8px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500, flex: 1, minWidth: "70px" } }, "🔗 Share"),
               React.createElement("button", { onClick: clearAllItems, style: { background: "rgba(251,113,133,0.15)", border: "1px solid rgba(251,113,133,0.4)", color: "#fb7185", padding: "8px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500, flex: 1, minWidth: "70px" } }, "🗑️ Clear"),
+              React.createElement("button", { onClick: deleteList, style: { background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#ef4444", padding: "8px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500, flex: 1, minWidth: "70px" } }, "✕ Delete"),
               React.createElement("button", { onClick: signOut, style: { background: "rgba(156,163,175,0.15)", border: "1px solid rgba(156,163,175,0.3)", color: "#9ca3af", padding: "8px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", flex: 1, minWidth: "70px" } }, "Logout")
             ),
             user && isReadOnly && React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center" } },
@@ -533,7 +538,7 @@
             )
           ),
           
-          // Premade Lists Modal - Fixed
+          // Premade Lists Modal
           showPremade && React.createElement("div", { style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.95)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } },
             React.createElement("div", { style: { background: "#1a202c", borderRadius: 20, maxWidth: 500, width: "100%", maxHeight: "85vh", overflow: "auto", padding: 20 } },
               React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, borderBottom: "1px solid rgba(74,222,128,0.3)", paddingBottom: 12 } },
@@ -594,7 +599,8 @@
               })
             ),
             !pasteMode ? React.createElement("div", { style: { display: "flex", gap: 8 } },
-              React.createElement("input", { value: newName, onChange: e => setNewName(e.target.value), onKeyDown: e => e.key === "Enter" && addSingle(), placeholder: "Add an item…", style: { flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 9, padding: "10px 13px", color: "#fff", fontFamily: "'Lora', serif", fontSize: 14 } }),
+              // FIX 2 (cont): value now uses newItemName, onChange uses setNewItemName
+              React.createElement("input", { value: newItemName, onChange: e => setNewItemName(e.target.value), onKeyDown: e => e.key === "Enter" && addSingle(), placeholder: "Add an item…", style: { flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 9, padding: "10px 13px", color: "#fff", fontFamily: "'Lora', serif", fontSize: 14 } }),
               React.createElement("button", { onClick: addSingle, style: { padding: "10px 18px", borderRadius: 9, border: "none", background: "linear-gradient(135deg, #4ade80, #22c55e)", color: "#0e1117", fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 500, cursor: "pointer" } }, "Add")
             ) : React.createElement("div", {},
               React.createElement("textarea", { rows: 7, value: pasteText, onChange: e => handlePasteChange(e.target.value), placeholder: "Paste your list here:\n\n1. Corn flour\n2. Chicken\n3. Avocado\n\nNumbers, bullets — anything works.", style: { width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 9, padding: "11px 13px", color: "#fff", fontFamily: "'DM Mono', monospace", fontSize: 12, lineHeight: 1.7, marginBottom: 10 } }),
@@ -612,7 +618,6 @@
           ),
           
           isReadOnly && React.createElement("div", { style: { marginTop: 28, textAlign: "center", padding: "16px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.1)" } },
-            React.createElement("span", { style: { fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)" } }, "📋 Shared list — view only"),
             React.createElement("span", { style: { fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)" } }, "📋 Shared list — view only"),
             React.createElement("br"),
             !user && React.createElement("button", { 
