@@ -15,22 +15,41 @@
     input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.22); }
     input:focus, textarea:focus { outline: none; }
     textarea { resize: none; }
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #4ade80;
+      color: #0e1117;
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-family: "'DM Mono', monospace";
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 1000;
+      animation: fadeOut 2s ease forwards;
+    }
+    @keyframes fadeOut {
+      0% { opacity: 1; transform: translateX(-50%) translateY(0); }
+      70% { opacity: 1; transform: translateX(-50%) translateY(0); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-20px); visibility: hidden; }
+    }
   </style>
 </head>
 <body>
   <div id="root"></div>
 
-  <!-- Firebase v8 (works without build tools) -->
+  <!-- Firebase v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-  <!-- React (production versions) -->
+  <!-- React -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
   <script>
-    // Initialize Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyDn9OwDwlwa_3ZfbecqqekkM-qC2mHAxig",
       authDomain: "shoplistmine.firebaseapp.com",
@@ -43,6 +62,16 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
+    function showToast(message) {
+      const existing = document.querySelector('.toast');
+      if (existing) existing.remove();
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    }
+
     function parseListText(text) {
       return text.split("\n")
         .map(line => line.replace(/^\s*\d+[.)]\s*/, "").replace(/^\s*[-•*]\s*/, "").trim())
@@ -50,7 +79,7 @@
     }
 
     function generateShareLink(listId) {
-      return `${window.location.origin}${window.location.pathname}?list=${listId}`;
+      return `${window.location.origin}${window.location.pathname}?shared=${listId}`;
     }
 
     function LoginScreen() {
@@ -60,11 +89,7 @@
           await auth.signInWithPopup(provider);
         } catch (error) {
           console.error("Sign in error:", error);
-          if (error.code === 'auth/popup-blocked') {
-            alert("Please allow popups for this site to sign in with Google.");
-          } else {
-            alert("Sign in failed: " + error.message);
-          }
+          alert("Sign in failed: " + error.message);
         }
       };
 
@@ -89,21 +114,22 @@
       );
     }
 
-    function GroceryItem({ item, onToggle, onDelete }) {
+    function GroceryItem({ item, onToggle, onDelete, readOnly }) {
       const startX = React.useRef(null), startY = React.useRef(null);
       const [offset, setOffset] = React.useState(0);
       const [swiping, setSwiping] = React.useState(false);
       const [dismissed, setDismissed] = React.useState(false);
       const [direction, setDirection] = React.useState(0);
 
-      const handleStart = (cx, cy) => { startX.current = cx; startY.current = cy; setSwiping(true); };
+      const handleStart = (cx, cy) => { if (readOnly) return; startX.current = cx; startY.current = cy; setSwiping(true); };
       const handleMove = (cx, cy) => {
-        if (startX.current === null) return;
+        if (readOnly || startX.current === null) return;
         const dx = cx - startX.current, dy = cy - startY.current;
         if (Math.abs(dy) > Math.abs(dx) * 1.5) return;
         setOffset(dx); setDirection(dx > 0 ? 1 : -1);
       };
       const handleEnd = () => {
+        if (readOnly) return;
         if (Math.abs(offset) > 80) { setDismissed(true); setTimeout(() => onToggle(item.id), 320); }
         else setOffset(0);
         setSwiping(false); startX.current = null;
@@ -112,7 +138,7 @@
       const bgOpacity = Math.min(Math.abs(offset) / 80, 1);
 
       return React.createElement("div", { style: { position: "relative", overflow: "hidden", marginBottom: 8, borderRadius: 12, height: dismissed ? 0 : undefined, opacity: dismissed ? 0 : 1, transition: dismissed ? "height 0.3s ease, opacity 0.3s ease, margin 0.3s ease" : "none" } },
-        React.createElement("div", { style: { position: "absolute", inset: 0, borderRadius: 12, background: direction > 0 ? `rgba(74,222,128,${bgOpacity * 0.28})` : `rgba(251,146,60,${bgOpacity * 0.28})`, display: "flex", alignItems: "center", justifyContent: direction > 0 ? "flex-start" : "flex-end", padding: "0 20px", fontSize: 18 } },
+        !readOnly && React.createElement("div", { style: { position: "absolute", inset: 0, borderRadius: 12, background: direction > 0 ? `rgba(74,222,128,${bgOpacity * 0.28})` : `rgba(251,146,60,${bgOpacity * 0.28})`, display: "flex", alignItems: "center", justifyContent: direction > 0 ? "flex-start" : "flex-end", padding: "0 20px", fontSize: 18 } },
           React.createElement("span", { style: { opacity: bgOpacity } }, direction > 0 ? "✓" : "↩")
         ),
         React.createElement("div", {
@@ -122,18 +148,18 @@
           onTouchStart: e => handleStart(e.touches[0].clientX, e.touches[0].clientY),
           onTouchMove: e => handleMove(e.touches[0].clientX, e.touches[0].clientY),
           onTouchEnd: handleEnd,
-          style: { display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", borderRadius: 12, background: item.done ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.08)", border: `1px solid ${item.done ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.12)"}`, cursor: "grab", userSelect: "none", transform: `translateX(${offset}px)`, transition: swiping ? "none" : "transform 0.3s cubic-bezier(0.34,1.56,0.64,1)", backdropFilter: "blur(8px)" }
+          style: { display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", borderRadius: 12, background: item.done ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.08)", border: `1px solid ${item.done ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.12)"}`, cursor: readOnly ? "default" : "grab", userSelect: "none", transform: `translateX(${offset}px)`, transition: swiping ? "none" : "transform 0.3s cubic-bezier(0.34,1.56,0.64,1)", backdropFilter: "blur(8px)" }
         },
           React.createElement("div", {
-            onClick: e => { e.stopPropagation(); onToggle(item.id); },
-            style: { width: 22, height: 22, borderRadius: "50%", flexShrink: 0, border: `2px solid ${item.done ? "#4ade80" : "rgba(255,255,255,0.25)"}`, background: item.done ? "#4ade80" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.2s" }
+            onClick: e => { e.stopPropagation(); if (!readOnly) onToggle(item.id); },
+            style: { width: 22, height: 22, borderRadius: "50%", flexShrink: 0, border: `2px solid ${item.done ? "#4ade80" : "rgba(255,255,255,0.25)"}`, background: item.done ? "#4ade80" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: readOnly ? "default" : "pointer", transition: "all 0.2s" }
           },
             item.done && React.createElement("span", { style: { color: "#0e1117", fontSize: 12, fontWeight: 700 } }, "✓")
           ),
           React.createElement("div", { style: { flex: 1 } },
             React.createElement("div", { style: { fontFamily: "'Lora', Georgia, serif", fontSize: 15, fontWeight: 500, color: item.done ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.9)", textDecoration: item.done ? "line-through" : "none" } }, item.name)
           ),
-          React.createElement("button", {
+          !readOnly && React.createElement("button", {
             onClick: e => { e.stopPropagation(); onDelete(item.id); },
             style: { background: "none", border: "none", color: "rgba(255,255,255,0.18)", fontSize: 17, cursor: "pointer", padding: "4px 6px" }
           }, "×")
@@ -152,23 +178,27 @@
       const [pasteText, setPasteText] = React.useState("");
       const [pastePreview, setPastePreview] = React.useState([]);
       const [shareLink, setShareLink] = React.useState("");
+      const [isReadOnly, setIsReadOnly] = React.useState(false);
 
       const saveCurrentList = React.useCallback(async (newItems) => {
-        if (!currentListId || !user) return;
+        if (!currentListId || !user || isReadOnly) return;
         await db.collection("lists").doc(currentListId).update({ items: newItems, name: currentListName });
-      }, [currentListId, currentListName, user]);
+      }, [currentListId, currentListName, user, isReadOnly]);
 
       const updateItems = (newItems) => { setItems(newItems); saveCurrentList(newItems); };
 
       const toggle = React.useCallback(id => {
+        if (isReadOnly) return;
         setItems(prev => { const upd = prev.map(i => i.id === id ? { ...i, done: !i.done } : i); saveCurrentList(upd); return upd; });
-      }, [saveCurrentList]);
+      }, [saveCurrentList, isReadOnly]);
 
       const remove = React.useCallback(id => {
+        if (isReadOnly) return;
         setItems(prev => { const upd = prev.filter(i => i.id !== id); saveCurrentList(upd); return upd; });
-      }, [saveCurrentList]);
+      }, [saveCurrentList, isReadOnly]);
 
       const addSingle = () => {
+        if (isReadOnly) return;
         const name = newName.trim(); if (!name) return;
         updateItems([...items, { id: Date.now(), name, done: false }]);
         setNewName("");
@@ -176,14 +206,16 @@
 
       const handlePasteChange = (text) => { setPasteText(text); setPastePreview(parseListText(text)); };
       const importPasted = () => {
+        if (isReadOnly) return;
         if (!pastePreview.length) return;
         updateItems([...items, ...pastePreview.map(name => ({ id: Date.now() + Math.random(), name, done: false }))]);
         setPasteText(""); setPastePreview([]); setPasteMode(false);
       };
 
-      const clearDone = () => updateItems(items.filter(i => !i.done));
+      const clearDone = () => { if (!isReadOnly) updateItems(items.filter(i => !i.done)); };
 
       const createNewList = async () => {
+        if (!user) return;
         const name = prompt("List name:", `Grocery List - ${new Date().toISOString().split("T")[0]}`);
         if (!name) return;
         const newList = { name, items: [], ownerId: user.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
@@ -195,10 +227,14 @@
 
       const copyShareLink = () => {
         if (!shareLink) return;
-        navigator.clipboard.writeText(shareLink).then(() => alert("Link copied! Anyone with the link can view this list.")).catch(() => prompt("Copy this link:", shareLink));
+        navigator.clipboard.writeText(shareLink).then(() => {
+          showToast("✓ Share link copied!");
+        }).catch(() => {
+          prompt("Copy this link to share:", shareLink);
+        });
       };
 
-      const signOut = () => { auth.signOut(); setUser(null); setCurrentListId(null); setItems([]); };
+      const signOut = () => { auth.signOut(); setUser(null); setCurrentListId(null); setItems([]); setIsReadOnly(false); };
 
       const loadUserLists = async (uid) => {
         const snap = await db.collection("lists").where("ownerId", "==", uid).orderBy("createdAt", "desc").get();
@@ -222,33 +258,52 @@
         setCurrentListName(list.name);
         setItems(list.items || []);
         setShareLink(generateShareLink(list.id));
+        setIsReadOnly(false);
       };
 
       const loadSharedList = async (listId) => {
-        const doc = await db.collection("lists").doc(listId).get();
-        if (doc.exists) {
-          const data = doc.data();
-          setCurrentListId(listId);
-          setCurrentListName(data.name);
-          setItems(data.items || []);
-          setShareLink(generateShareLink(listId));
-          setUser(null);
-        } else alert("List not found");
+        try {
+          const doc = await db.collection("lists").doc(listId).get();
+          if (doc.exists) {
+            const data = doc.data();
+            setCurrentListId(listId);
+            setCurrentListName(data.name);
+            setItems(data.items || []);
+            setShareLink(generateShareLink(listId));
+            setIsReadOnly(true);
+            setUser(null);
+          } else {
+            alert("List not found or has been deleted.");
+          }
+        } catch (error) {
+          console.error("Error loading shared list:", error);
+          alert("Could not load the shared list.");
+        }
       };
 
       React.useEffect(() => {
-        const unsub = auth.onAuthStateChanged(async (fbUser) => {
-          if (fbUser) {
-            setUser(fbUser);
-            loadUserLists(fbUser.uid);
-          } else {
-            setUser(null);
-            const params = new URLSearchParams(window.location.search);
-            const listId = params.get("list");
-            if (listId) loadSharedList(listId);
-          }
-        });
-        return () => unsub();
+        const params = new URLSearchParams(window.location.search);
+        const sharedListId = params.get("shared");
+        
+        if (sharedListId) {
+          loadSharedList(sharedListId);
+          const unsub = auth.onAuthStateChanged((fbUser) => {
+            if (fbUser && !user) {
+              setUser(fbUser);
+            }
+          });
+          return () => unsub();
+        } else {
+          const unsub = auth.onAuthStateChanged(async (fbUser) => {
+            if (fbUser) {
+              setUser(fbUser);
+              await loadUserLists(fbUser.uid);
+            } else {
+              setUser(null);
+            }
+          });
+          return () => unsub();
+        }
       }, []);
 
       if (!user && !currentListId) return React.createElement(LoginScreen);
@@ -261,27 +316,31 @@
         React.createElement("div", { style: { width: "100%", maxWidth: 420 } },
           React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 } },
             React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-              user && React.createElement("select", {
+              user && !isReadOnly && React.createElement("select", {
                 value: currentListId,
                 onChange: e => { const list = lists.find(l => l.id === e.target.value); if (list) selectList(list); },
                 style: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 10px", color: "#fff", fontFamily: "'DM Mono', monospace", fontSize: 12, maxWidth: 180 }
               }, lists.map(l => React.createElement("option", { key: l.id, value: l.id, style: { color: "#000" } }, l.name))),
-              !user && currentListId && React.createElement("span", { style: { color: "rgba(255,255,255,0.6)", fontSize: 14 } }, currentListName, " (shared)")
+              (isReadOnly || (!user && currentListId)) && React.createElement("span", { style: { color: "rgba(255,255,255,0.6)", fontSize: 14 } }, 
+                currentListName, 
+                React.createElement("span", { style: { marginLeft: 8, background: "rgba(74,222,128,0.15)", padding: "2px 8px", borderRadius: 12, fontSize: 10, color: "#4ade80" } }, "view only")
+              )
             ),
             React.createElement("div", { style: { display: "flex", gap: 8 } },
-              user && [
+              user && !isReadOnly && [
                 React.createElement("button", { key: "new", onClick: createNewList, style: { background: "none", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", padding: "6px 12px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "+ New"),
                 React.createElement("button", { key: "share", onClick: copyShareLink, style: { background: "none", border: "1px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)", padding: "6px 12px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "🔗 Share"),
                 React.createElement("button", { key: "logout", onClick: signOut, style: { background: "none", border: "1px solid rgba(251,113,133,0.3)", color: "rgba(251,113,133,0.8)", padding: "6px 12px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "Logout")
               ],
-              !user && currentListId && React.createElement("button", {
+              user && isReadOnly && React.createElement("button", { key: "signout", onClick: signOut, style: { background: "none", border: "1px solid rgba(251,113,133,0.3)", color: "rgba(251,113,133,0.8)", padding: "6px 12px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "Sign out"),
+              !user && currentListId && !isReadOnly && React.createElement("button", {
                 onClick: () => { const provider = new firebase.auth.GoogleAuthProvider(); auth.signInWithPopup(provider); },
                 style: { background: "#fff", border: "none", color: "#0e1117", padding: "8px 18px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Mono', monospace" }
-              }, "Sign in")
+              }, "Sign in to edit")
             )
           ),
           React.createElement("div", { style: { marginBottom: 24 } },
-            user ? React.createElement("input", {
+            !isReadOnly && user ? React.createElement("input", {
               value: currentListName,
               onChange: e => { setCurrentListName(e.target.value); db.collection("lists").doc(currentListId).update({ name: e.target.value }); },
               style: { background: "transparent", border: "none", borderBottom: "1px solid rgba(255,255,255,0.15)", padding: "6px 0", color: "#fff", fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 800, width: "100%" }
@@ -289,21 +348,21 @@
             React.createElement("div", { style: { marginTop: 16 } },
               React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } },
                 React.createElement("span", { style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.32)", letterSpacing: "0.06em", textTransform: "uppercase" } }, done.length, " / ", items.length, " picked · ", pct, "%"),
-                done.length > 0 && user && React.createElement("button", { onClick: clearDone, style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(251,113,133,0.65)", background: "none", border: "none", cursor: "pointer", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Clear done")
+                done.length > 0 && user && !isReadOnly && React.createElement("button", { onClick: clearDone, style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(251,113,133,0.65)", background: "none", border: "none", cursor: "pointer", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Clear done")
               ),
               React.createElement("div", { style: { height: 3, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden" } },
                 React.createElement("div", { style: { height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, #4ade80, #86efac)", borderRadius: 99, transition: "width 0.4s cubic-bezier(0.34,1.56,0.64,1)" } })
               )
             )
           ),
-          React.createElement("div", { style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.18)", textAlign: "center", marginBottom: 16, letterSpacing: "0.05em", textTransform: "uppercase" } }, "← swipe to toggle done →"),
-          pending.map(item => React.createElement(GroceryItem, { key: item.id, item: item, onToggle: toggle, onDelete: remove })),
+          React.createElement("div", { style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.18)", textAlign: "center", marginBottom: 16, letterSpacing: "0.05em", textTransform: "uppercase" } }, isReadOnly ? "view only — cannot edit" : "← swipe to toggle done →"),
+          pending.map(item => React.createElement(GroceryItem, { key: item.id, item: item, onToggle: toggle, onDelete: remove, readOnly: isReadOnly })),
           done.length > 0 && React.createElement("div", { style: { marginTop: 8 } },
             React.createElement("div", { style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.17)", textTransform: "uppercase", letterSpacing: "0.12em", margin: "16px 0 10px 4px" } }, "— Picked up"),
-            done.map(item => React.createElement(GroceryItem, { key: item.id, item: item, onToggle: toggle, onDelete: remove }))
+            done.map(item => React.createElement(GroceryItem, { key: item.id, item: item, onToggle: toggle, onDelete: remove, readOnly: isReadOnly }))
           ),
           items.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: "48px 0", fontFamily: "'Lora', serif", color: "rgba(255,255,255,0.2)", fontSize: 15 } }, "Your list is empty 🛒"),
-          user && React.createElement("div", { style: { marginTop: 28, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 16, padding: "14px 16px" } },
+          user && !isReadOnly && React.createElement("div", { style: { marginTop: 28, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 16, padding: "14px 16px" } },
             React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14, background: "rgba(0,0,0,0.3)", borderRadius: 10, padding: 4 } },
               ["Single item", "Paste list"].map((label, i) => {
                 const active = pasteMode === (i === 1);
@@ -326,6 +385,14 @@
                 pastePreview.length > 0 ? `Import ${pastePreview.length} items →` : "Paste a list above"
               )
             )
+          ),
+          isReadOnly && React.createElement("div", { style: { marginTop: 28, textAlign: "center", padding: "16px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.1)" } },
+            React.createElement("span", { style: { fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)" } }, "📋 This is a shared list — view only"),
+            React.createElement("br"),
+            !user && React.createElement("button", { 
+              onClick: () => { const provider = new firebase.auth.GoogleAuthProvider(); auth.signInWithPopup(provider); },
+              style: { marginTop: 12, background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.3)", color: "#4ade80", padding: "8px 16px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace" }
+            }, "Sign in to create your own lists")
           )
         )
       );
