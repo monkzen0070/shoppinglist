@@ -45,6 +45,26 @@
     button:active {
       transform: scale(0.98);
     }
+    /* Make dropdown clearly visible */
+    select {
+      cursor: pointer;
+      background: #1a202c !important;
+      border: 2px solid #4ade80 !important;
+      color: white !important;
+      padding: 8px 12px !important;
+      border-radius: 8px !important;
+      font-size: 13px !important;
+      font-family: "'DM Mono', monospace" !important;
+    }
+    select option {
+      background: #1a202c !important;
+      color: white !important;
+      padding: 8px !important;
+    }
+    select:hover {
+      background: #2d3748 !important;
+      border-color: #86efac !important;
+    }
   </style>
 </head>
 <body>
@@ -223,6 +243,14 @@
       };
 
       const clearDone = () => { if (!isReadOnly) updateItems(items.filter(i => !i.done)); };
+      
+      const clearAllItems = () => {
+        if (isReadOnly) return;
+        if (confirm("Remove ALL items from this list? This cannot be undone.")) {
+          updateItems([]);
+          showToast("🗑️ All items cleared");
+        }
+      };
 
       const createNewList = async () => {
         if (!user) return;
@@ -233,6 +261,7 @@
         const list = { id: docRef.id, ...newList };
         setLists(prev => [list, ...prev]);
         selectList(list);
+        showToast("✓ New list created!");
       };
 
       const copyShareLink = () => {
@@ -333,9 +362,9 @@
               user && !isReadOnly && React.createElement("select", {
                 value: currentListId || "",
                 onChange: e => { const list = lists.find(l => l.id === e.target.value); if (list) selectList(list); },
-                style: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 10px", color: "#fff", fontFamily: "'DM Mono', monospace", fontSize: 12, maxWidth: 160, cursor: "pointer" }
-              }, lists.map(l => React.createElement("option", { key: l.id, value: l.id, style: { color: "#000" } }, l.name))),
-              (isReadOnly || (!user && currentListId)) && React.createElement("span", { style: { color: "rgba(255,255,255,0.6)", fontSize: 14, background: "rgba(0,0,0,0.3)", padding: "6px 12px", borderRadius: 8 } }, 
+                style: { background: "#1a202c", border: "2px solid #4ade80", borderRadius: 8, padding: "8px 12px", color: "white", fontFamily: "'DM Mono', monospace", fontSize: 13, cursor: "pointer", maxWidth: 180 }
+              }, lists.map(l => React.createElement("option", { key: l.id, value: l.id, style: { background: "#1a202c", color: "white", padding: "8px" } }, l.name))),
+              (isReadOnly || (!user && currentListId)) && React.createElement("span", { style: { color: "rgba(255,255,255,0.6)", fontSize: 14, background: "#1a202c", padding: "8px 12px", borderRadius: 8, border: "1px solid #4ade80" } }, 
                 currentListName, 
                 React.createElement("span", { style: { marginLeft: 8, background: "rgba(74,222,128,0.15)", padding: "2px 8px", borderRadius: 12, fontSize: 10, color: "#4ade80" } }, "view only")
               )
@@ -344,7 +373,8 @@
               user && !isReadOnly && [
                 React.createElement("button", { key: "new", onClick: createNewList, style: { background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500 } }, "+ New"),
                 React.createElement("button", { key: "share", onClick: copyShareLink, style: { background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500 } }, "🔗 Share"),
-                React.createElement("button", { key: "logout", onClick: signOut, style: { background: "rgba(251,113,133,0.15)", border: "1px solid rgba(251,113,133,0.3)", color: "rgba(251,113,133,0.9)", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "Logout")
+                React.createElement("button", { key: "clearall", onClick: clearAllItems, style: { background: "rgba(251,113,133,0.15)", border: "1px solid rgba(251,113,133,0.4)", color: "#fb7185", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace", fontWeight: 500 } }, "🗑️ Clear All"),
+                React.createElement("button", { key: "logout", onClick: signOut, style: { background: "rgba(156,163,175,0.15)", border: "1px solid rgba(156,163,175,0.3)", color: "#9ca3af", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "Logout")
               ],
               user && isReadOnly && React.createElement("button", { key: "signout", onClick: signOut, style: { background: "rgba(251,113,133,0.15)", border: "1px solid rgba(251,113,133,0.3)", color: "rgba(251,113,133,0.9)", padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono', monospace" } }, "Sign out"),
               !user && currentListId && !isReadOnly && React.createElement("button", {
@@ -362,7 +392,10 @@
             React.createElement("div", { style: { marginTop: 16 } },
               React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } },
                 React.createElement("span", { style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.32)", letterSpacing: "0.06em", textTransform: "uppercase" } }, done.length, " / ", items.length, " picked · ", pct, "%"),
-                done.length > 0 && user && !isReadOnly && React.createElement("button", { onClick: clearDone, style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(251,113,133,0.65)", background: "none", border: "none", cursor: "pointer", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Clear done")
+                React.createElement("div", { style: { display: "flex", gap: 8 } },
+                  items.length > 0 && user && !isReadOnly && React.createElement("button", { onClick: clearAllItems, style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "#fb7185", background: "none", border: "none", cursor: "pointer", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Clear all"),
+                  done.length > 0 && user && !isReadOnly && React.createElement("button", { onClick: clearDone, style: { fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(251,113,133,0.65)", background: "none", border: "none", cursor: "pointer", letterSpacing: "0.06em", textTransform: "uppercase" } }, "Clear done")
+                )
               ),
               React.createElement("div", { style: { height: 3, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden" } },
                 React.createElement("div", { style: { height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, #4ade80, #86efac)", borderRadius: 99, transition: "width 0.4s cubic-bezier(0.34,1.56,0.64,1)" } })
